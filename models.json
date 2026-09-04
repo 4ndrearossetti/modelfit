@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "_notes": "Starter catalogue. quality = editorial ordering (higher = smarter), decode_fraction = share of weights read per token (1.0 dense, active/total for MoE). Sizes from HF file listings (decimal GB, approx to ~0.1GB; sharded repos summed). Margins for the fit check live in code, not here: discrete reserve max(2GiB, 9%), UMA headroom 20%, pleasant floor 20 tok/s.",
+  "models": [
+    {
+      "id": "qwen3.8-flash-next",
+      "display_name": "Qwen3.8 Flash Next",
+      "description": "Frontier-scale MoE; top of the catalogue for very large rigs (sharded GGUF - sum all shards). Alternative slot: GLM 5.3 Flash",
+      "repo": "unsloth/Qwen3.8-Flash-Next-GGUF",
+      "quant": "UD-Q4_K_XL",
+      "size_bytes": 111400000000,
+      "quality": 95,
+      "decode_fraction": 0.08,
+      "tier_hint": "192GB+ unified / serious multi-GPU"
+    },
+    {
+      "id": "qwen3.8-27b",
+      "display_name": "Qwen3.8 27B",
+      "description": "Best all-round dense model; vision; strong at long context",
+      "repo": "unsloth/Qwen3.8-27B-GGUF",
+      "quant": "UD-Q4_K_M",
+      "size_bytes": 16464440224,
+      "quality": 90,
+      "decode_fraction": 1.0,
+      "tier_hint": "24GB VRAM / 32GB+ unified"
+    },
+    {
+      "id": "qwen3.6-35b-a3b",
+      "display_name": "Qwen3.6 35B-A3B",
+      "description": "MoE all-rounder; vision; fast even partially offloaded \u2014 the sweet spot for 8-16GB cards with 32GB RAM",
+      "repo": "unsloth/Qwen3.6-35B-A3B-GGUF",
+      "quant": "UD-Q4_K_M",
+      "size_bytes": 22665829456,
+      "quality": 80,
+      "decode_fraction": 0.15,
+      "tier_hint": "8GB+ VRAM with 32GB RAM (spill-friendly), or 24GB+ resident"
+    },
+    {
+      "id": "gemma-4-e4b",
+      "display_name": "Gemma 4 E4B",
+      "description": "Small efficient model; good CPU-only citizen and low-VRAM pick",
+      "repo": "unsloth/gemma-4-E4B-it-GGUF",
+      "quant": "Q4_K_M",
+      "size_bytes": 4980000000,
+      "quality": 60,
+      "decode_fraction": 1.0,
+      "tier_hint": "CPU-only 16GB RAM, or any GPU >=6GB"
+    },
+    {
+      "id": "gemma-4-e2b",
+      "display_name": "Gemma 4 E2B (QAT)",
+      "description": "Smallest tier: multimodal, QAT 4-bit, runs on ~3GB total memory - the pick for CPU-only 8GB laptops",
+      "repo": "unsloth/gemma-4-E2B-it-qat-GGUF",
+      "quant": "UD-Q4_K_XL",
+      "size_bytes": 2620000000,
+      "quality": 40,
+      "decode_fraction": 1.0,
+      "tier_hint": "CPU-only 8GB RAM / any GPU"
+    },
+    {
+      "id": "deepseek-v4-flash",
+      "display_name": "DeepSeek V4 Flash",
+      "description": "Frontier-class MoE for big-memory machines (sharded GGUF \u2014 sum all shards)",
+      "repo": "unsloth/DeepSeek-V4-Flash-GGUF",
+      "quant": "UD-Q4_K_XL",
+      "size_bytes": 155100000000,
+      "quality": 85,
+      "decode_fraction": 0.1,
+      "tier_hint": "128GB+ unified / multi-GPU rigs"
+    }
+  ]
+}
