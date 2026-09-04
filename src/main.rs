@@ -1,7 +1,5 @@
-mod catalog;
-mod recommend;
-
-use recommend::{BudgetKind, Verdict};
+use modelfit::recommend::{BudgetKind, Verdict};
+use modelfit::{catalog, recommend};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
