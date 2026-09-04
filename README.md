@@ -15,11 +15,12 @@ not just the verdict.
 ```
 $ modelfit
 machine: discrete GPU | usable for models: 6.0 GiB (+24.8 GiB host for MoE spill)
+
   Qwen3.8 Flash Next       q95   too big       (needs: 192GB+ unified / serious multi-GPU)
   Qwen3.8 27B              q90   too big       (needs: 24GB VRAM / 32GB+ unified)
-  Qwen3.6 35B-A3B          q80   fits (spill)  ~31 tok/s
-  Gemma 4 E4B              q60   fits          ~201 tok/s
-  Gemma 4 E2B (QAT)        q40   fits          ~382 tok/s
+  Qwen3.6 35B-A3B          q80   fits (spill)  ~29 tok/s
+  Gemma 4 E4B              q60   fits          ~66 tok/s
+  Gemma 4 E2B (QAT)        q40   fits          ~125 tok/s
   DeepSeek V4 Flash        q85   too big       (needs: 128GB+ unified / multi-GPU rigs)
 
 recommended: Qwen3.6 35B-A3B (best-quality-spilled)
@@ -45,7 +46,10 @@ Two variables:
   predicted tok/s ≈ bandwidth ÷ bytes-read-per-token. Dense models read
   all their weights every token; MoE models read only the active slice
   (`decode_fraction`). Partially offloaded models read the VRAM-resident
-  fraction at GPU speed and stream the rest from host RAM.
+  fraction at GPU speed and stream the rest from host RAM. GPU bandwidth
+  is measured per machine when hwprobe reports it (NVML clocks on NVIDIA,
+  per-chip table on Apple Silicon), with class constants as fallback;
+  host bandwidth is classed by RAM kind when known.
 
 The pick: **highest quality that fits and clears ~20 tok/s** (below that,
 a model stops feeling pleasant for interactive use); else the fastest
@@ -53,8 +57,9 @@ thing that fits. The reason is always reported, including
 `speed-gated-quality`, the answer to "why not the bigger model?".
 
 Predictions are for ordering candidates and gating the floor, not
-benchmark truth, so expect them to be within a rough factor of measured
-speed, conservative on well-tuned setups. Tested memory margins:
+benchmark truth, so expect them within ~10-25% of measured speed when
+hwprobe supplies bandwidth, rougher on class-constant fallback;
+conservative on well-tuned setups. Tested memory margins:
 max(2 GiB, 9%) of VRAM reserved for the desktop, 20% of unified memory
 left to the OS.
 
@@ -69,7 +74,7 @@ your ordering. The embedded copy makes the binary work offline;
 
 ## Relationship to hwprobe
 
-hwprobe measures (RAM, GPUs, VRAM, unified memory);
+hwprobe measures (RAM, GPUs, VRAM, unified memory, memory bandwidth);
 modelfit suggests (budgets, margins, speed physics, the pick).
 If you're building your own recommender, launcher, or installer, you
 probably want hwprobe as the base and this repo as a worked example 

@@ -1,6 +1,6 @@
 [package]
 name = "modelfit"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 description = "Recommends local AI models for this machine, using hwprobe hardware detection"
 license = "MIT"
@@ -10,6 +10,6 @@ keywords = ["llm", "local-ai", "gguf", "recommendation", "hardware"]
 categories = ["command-line-utilities"]
 
 [dependencies]
-hwprobe = "0.1"
+hwprobe = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

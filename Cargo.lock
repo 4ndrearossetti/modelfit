@@ -103,9 +103,9 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "hwprobe"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "698edb7e8f8f1a5d2d70c6bf1f0fd7ef5c39688970c37758204a2a95b9a2ca8e"
+checksum = "797c8ecd936bc3776bcfcc5479589a4428f07edb966da90da19c2a11579e8da7"
 dependencies = [
  "nvml-wrapper",
  "objc2",
@@ -159,7 +159,7 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
 name = "modelfit"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "hwprobe",
  "serde",

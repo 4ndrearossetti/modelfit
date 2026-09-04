@@ -9,6 +9,10 @@
 //!     speed and stream the rest from host RAM (serial two-tier model)
 //!   - below 20 tok/s a model stops feeling pleasant for interactive use
 //!
+//! GPU bandwidth: measured per machine when hwprobe reports it
+//! (bandwidth_gb_s on the primary GPU), class constant as fallback.
+//! Host bandwidth: class value from ram_kind when known.
+//!
 //! Departure from hermes: a spilled MoE that clears the pleasant floor is
 //! a first-class candidate, not a last resort — partial offload of MoE
 //! models is normal daily-driver territory on 8-16GB cards.
@@ -27,10 +31,22 @@ fn overhead_for(size: u64) -> u64 {
     (768 * MIB).max((size as f64 * 0.12) as u64)
 }
 
+/// Fallbacks when hwprobe can't report a measured value.
 const DISCRETE_BANDWIDTH_GB_S: f64 = 1000.0;
 const UMA_BANDWIDTH_GB_S: f64 = 210.0;
 const HOST_BANDWIDTH_GB_S: f64 = 80.0;
 const PLEASANT_FLOOR_TOK_S: f64 = 20.0;
+
+/// Host RAM bandwidth by memory kind (effective class values, GB/s).
+fn host_bandwidth_gb_s(ram_kind: Option<&str>) -> f64 {
+    match ram_kind {
+        Some(k) if k.starts_with("LPDDR5") => 90.0,
+        Some(k) if k.starts_with("DDR5") => 65.0,
+        Some(k) if k.starts_with("LPDDR4") => 50.0,
+        Some(k) if k.starts_with("DDR4") => 45.0,
+        _ => HOST_BANDWIDTH_GB_S,
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum BudgetKind {
@@ -46,11 +62,19 @@ pub struct Budget {
     pub resident_bytes: u64,
     /// Extra host bytes available for spilled MoE weights (discrete only).
     pub spill_extra_bytes: u64,
+    /// Bandwidth of the resident tier (GPU or unified pool), GB/s.
+    pub resident_bandwidth_gb_s: f64,
+    /// Bandwidth of host RAM (spill tier / CPU-only), GB/s.
+    pub host_bandwidth_gb_s: f64,
+    /// True when resident_bandwidth came from hwprobe measurement rather
+    /// than a class constant.
+    pub bandwidth_measured: bool,
     pub driver_missing_nvidia: bool,
 }
 
 pub fn budget_from(info: &HardwareInfo) -> Budget {
     let ram_bytes = info.ram_mb * MIB;
+    let host_bw = host_bandwidth_gb_s(info.ram_kind.as_deref());
     let driver_missing_nvidia = info.gpus.iter().any(|g| g.state == GpuState::DriverMissing);
 
     if info.unified_memory {
@@ -58,23 +82,27 @@ pub fn budget_from(info: &HardwareInfo) -> Budget {
             Some(mb) => mb * MIB,
             None => (ram_bytes as f64 * 0.80) as u64,
         };
+        let measured = info.gpus.iter().find_map(|g| g.bandwidth_gb_s);
         return Budget {
             kind: BudgetKind::UnifiedMemory,
             resident_bytes: resident,
             spill_extra_bytes: 0,
+            resident_bandwidth_gb_s: measured.unwrap_or(UMA_BANDWIDTH_GB_S),
+            host_bandwidth_gb_s: host_bw,
+            bandwidth_measured: measured.is_some(),
             driver_missing_nvidia,
         };
     }
 
-    let best_vram_bytes = info
+    let best_gpu = info
         .gpus
         .iter()
         .filter(|g| !g.shared && g.state == GpuState::Ok)
-        .filter_map(|g| g.vram_mb)
-        .max()
-        .map(|mb| mb * MIB);
+        .filter(|g| g.vram_mb.is_some())
+        .max_by_key(|g| g.vram_mb.unwrap_or(0));
 
-    if let Some(vram) = best_vram_bytes {
+    if let Some(gpu) = best_gpu {
+        let vram = gpu.vram_mb.unwrap_or(0) * MIB;
         let reserve = (2 * GIB).max((vram as f64 * 0.09) as u64);
         let resident = vram.saturating_sub(reserve);
         let spill = (ram_bytes as f64 * 0.80) as u64;
@@ -82,6 +110,9 @@ pub fn budget_from(info: &HardwareInfo) -> Budget {
             kind: BudgetKind::DiscreteGpu,
             resident_bytes: resident,
             spill_extra_bytes: spill,
+            resident_bandwidth_gb_s: gpu.bandwidth_gb_s.unwrap_or(DISCRETE_BANDWIDTH_GB_S),
+            host_bandwidth_gb_s: host_bw,
+            bandwidth_measured: gpu.bandwidth_gb_s.is_some(),
             driver_missing_nvidia,
         };
     }
@@ -90,6 +121,9 @@ pub fn budget_from(info: &HardwareInfo) -> Budget {
         kind: BudgetKind::CpuOnly,
         resident_bytes: (ram_bytes as f64 * 0.80) as u64,
         spill_extra_bytes: 0,
+        resident_bandwidth_gb_s: host_bw,
+        host_bandwidth_gb_s: host_bw,
+        bandwidth_measured: false,
         driver_missing_nvidia,
     }
 }
@@ -151,13 +185,8 @@ fn assess(entry: &ModelEntry, budget: &Budget) -> Verdict {
     let bytes_per_token = (size as f64 * entry.decode_fraction).max(1.0);
 
     if need <= budget.resident_bytes {
-        let bw = match budget.kind {
-            BudgetKind::DiscreteGpu => DISCRETE_BANDWIDTH_GB_S,
-            BudgetKind::UnifiedMemory => UMA_BANDWIDTH_GB_S,
-            BudgetKind::CpuOnly => HOST_BANDWIDTH_GB_S,
-        };
         return Verdict::Resident {
-            predicted_tok_s: bw * 1e9 / bytes_per_token,
+            predicted_tok_s: budget.resident_bandwidth_gb_s * 1e9 / bytes_per_token,
         };
     }
 
@@ -165,15 +194,15 @@ fn assess(entry: &ModelEntry, budget: &Budget) -> Verdict {
     // the bus every token — miserable; MoE reads only the active slice).
     // Serial two-tier read: the VRAM-resident fraction of the per-token
     // bytes moves at GPU bandwidth, the host-resident remainder at host
-    // bandwidth. time/token = bpt*(res/gpu_bw + (1-res)/host_bw).
+    // bandwidth.
     if budget.kind == BudgetKind::DiscreteGpu
         && entry.decode_fraction < 0.5
         && need <= budget.resident_bytes + budget.spill_extra_bytes
     {
         let resident_fraction = budget.resident_bytes as f64 / need as f64;
         let secs_per_token = bytes_per_token
-            * (resident_fraction / (DISCRETE_BANDWIDTH_GB_S * 1e9)
-                + (1.0 - resident_fraction) / (HOST_BANDWIDTH_GB_S * 1e9));
+            * (resident_fraction / (budget.resident_bandwidth_gb_s * 1e9)
+                + (1.0 - resident_fraction) / (budget.host_bandwidth_gb_s * 1e9));
         return Verdict::Spilled {
             predicted_tok_s: 1.0 / secs_per_token,
         };
@@ -271,6 +300,7 @@ mod tests {
                         shared: false,
                         state: GpuState::Ok,
                         primary: true,
+                        bandwidth_gb_s: None,
                     }]
                 })
                 .unwrap_or_default(),
@@ -326,5 +356,15 @@ mod tests {
         let cat = catalog::load(None).unwrap();
         let rec = recommend(&machine(2048, None, false), &cat);
         assert!(rec.pick.is_none());
+    }
+
+    #[test]
+    fn measured_bandwidth_is_used_over_class_constant() {
+        let cat = catalog::load(None).unwrap();
+        let mut info = machine(31775, Some(8192), false);
+        info.gpus[0].bandwidth_gb_s = Some(326.0);
+        let rec = recommend(&info, &cat);
+        assert!(rec.budget.bandwidth_measured);
+        assert!((rec.budget.resident_bandwidth_gb_s - 326.0).abs() < 1e-9);
     }
 }
