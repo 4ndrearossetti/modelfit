@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2024"
 description = "Recommends local AI models for this machine, using hwprobe hardware detection"
 license = "MIT"
+repository = "https://github.com/4ndrearossetti/modelfit"
+readme = "README.md"
+keywords = ["llm", "local-ai", "gguf", "recommendation", "hardware"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 hwprobe = "0.1"

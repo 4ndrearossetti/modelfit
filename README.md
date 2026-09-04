@@ -1,5 +1,9 @@
 # modelfit
 
+[![crates.io](https://img.shields.io/crates/v/modelfit.svg)](https://crates.io/crates/modelfit)
+[![docs.rs](https://docs.rs/modelfit/badge.svg)](https://docs.rs/modelfit)
+[![CI](https://github.com/4ndrearossetti/modelfit/actions/workflows/ci.yml/badge.svg)](https://github.com/4ndrearossetti/modelfit/actions)
+
 Answers the question [hwprobe](https://github.com/4ndrearossetti/hwprobe)
 measures the ingredients for: **which local AI model should this machine
 actually run?**
