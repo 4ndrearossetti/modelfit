@@ -9,8 +9,8 @@ measures the ingredients for: **which local AI model should this machine
 actually run?**
 
 Detects your hardware (via hwprobe), checks a small curated catalogue of
-models against it, and recommends the best one — with the reasoning shown,
-not just the verdict.
+models against it, recommends the best one (with the reasoning shown, not
+just the model choice) and downloads it on request.
 
 ```
 $ modelfit
@@ -24,12 +24,22 @@ machine: discrete GPU | usable for models: 6.0 GiB (+24.8 GiB host for MoE spill
   DeepSeek V4 Flash        q85   too big       (needs: 128GB+ unified / multi-GPU rigs)
 
 recommended: Qwen3.6 35B-A3B (best-quality-spilled)
-  get: unsloth/Qwen3.6-35B-A3B-GGUF — UD-Q4_K_M quant
+  get: modelfit get   (unsloth/Qwen3.6-35B-A3B-GGUF — UD-Q4_K_M quant)
   run: llama-server -m <path-to-model.gguf> -c 65536 -b 4096 -ub 4096 --flash-attn auto --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0.0
 ```
 
-`--json` for machine-readable output, `--catalog PATH` to use your own
-catalogue instead of the embedded one.
+Usage:
+
+- `modelfit` — recommend for this machine
+- `modelfit get [id]` — download the pick (or a named catalogue entry)
+  from Hugging Face into `~/models` (`--dir PATH` overrides). Filenames
+  are resolved from the repo at download time; interrupted downloads
+  resume; `HF_TOKEN` is honoured for gated repos. Prints the run command
+  with the real path when done.
+- `modelfit show <id>` — one catalogue entry, assessed on this machine
+- `--json` — machine-readable output (every assessment carries its
+  `launch` object for embedders)
+- `--catalog PATH` — your own catalogue instead of the embedded one
 
 ## Install
 
@@ -41,7 +51,7 @@ cargo install modelfit
 
 Two variables:
 
-- **Quality** is a hard-coded score: each catalogue entry carries a 
+- **Quality** is a hard-coded score: each catalogue entry carries a
   `quality` integer. Nothing computes it.
 - **Speed** is computed per machine: decode is memory-bound, so
   predicted tok/s ≈ bandwidth ÷ bytes-read-per-token. Dense models read
@@ -69,9 +79,9 @@ left to the OS.
 Each catalogue entry carries curated `llama-server` flags (context,
 batching, attention, and the model's recommended samplers) authored per
 model and, where marked tested, validated on real hardware. The command
-is printed for the pick (substitute the model path after downloading),
-and every assessment in the `--json` output carries its `launch` object
-for embedders.
+is printed for the pick (with the real path after `modelfit get`, with a
+placeholder otherwise) and every assessment in the `--json` output
+carries its `launch` object for embedders.
 
 Deliberately absent: computed layer placement. llama.cpp's auto-fit
 places layers better than precomputed `-ngl`/`-ncmoe` values, so the
@@ -93,16 +103,16 @@ marks flags authored from model defaults rather than validated on hardware.
 hwprobe measures (RAM, GPUs, VRAM, unified memory, memory bandwidth);
 modelfit suggests (budgets, margins, speed physics, the pick).
 If you're building your own recommender, launcher, or installer, you
-probably want hwprobe as the base and this repo as a worked example 
-of one opinion layer on top.
+probably want [hwprobe](https://github.com/4ndrearossetti/hwprobe) as
+the base and this repo as a worked example of one opinion layer on top.
 
 ## Out of scope
 
-- Downloading or running models (the output tells you what to get;
-  llama.cpp and friends do the rest)
+- Running and managing model runtimes (llama.cpp and friends do the
+  serving; modelfit stops at the download and the launch command)
 - Per-runtime precision (vLLM/MLX memory behaviour differs; predictions
   target the llama.cpp/GGUF world)
-- Benchmarking — predictions order candidates, they don't measure
+- Benchmarking; predictions order candidates, they don't measure
 
 ## License
 

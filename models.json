@@ -79,7 +79,7 @@
       "launch": {
         "args": "-ngl 999 -c 32768 --flash-attn on",
         "samplers": "--temp 1.0 --top-p 0.95 --top-k 64",
-        "tested": false
+        "tested": true
       }
     },
     {
