@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "_notes": "Starter catalogue. quality = editorial ordering (higher = smarter), decode_fraction = share of weights read per token (1.0 dense, active/total for MoE). Sizes from HF file listings (decimal GB, approx to ~0.1GB; sharded repos summed). Margins for the fit check live in code, not here: discrete reserve max(2GiB, 9%), UMA headroom 20%, pleasant floor 20 tok/s.",
+  "_notes": "Starter catalogue. quality = editorial ordering (higher = smarter), decode_fraction = share of weights read per token (1.0 dense, active/total for MoE). Sizes from HF file listings (decimal GB, approx to ~0.1GB; sharded repos summed). Margins for the fit check live in code, not here: discrete reserve max(2GiB, 9%), UMA headroom 20%, pleasant floor 20 tok/s. launch = curated llama-server flags per entry (no computed layer placement - llama.cpp auto-fit places better); tested=false means authored from defaults, not yet validated on hardware.",
   "models": [
     {
       "id": "qwen3.8-flash-next",
@@ -11,7 +11,12 @@
       "size_bytes": 111400000000,
       "quality": 95,
       "decode_fraction": 0.08,
-      "tier_hint": "192GB+ unified / serious multi-GPU"
+      "tier_hint": "192GB+ unified / serious multi-GPU",
+      "launch": {
+        "args": "-c 32768 --flash-attn on",
+        "samplers": "--temp 1.0 --top-p 0.95 --top-k 20 --min-p 0.0",
+        "tested": false
+      }
     },
     {
       "id": "qwen3.8-27b",
@@ -22,7 +27,12 @@
       "size_bytes": 16464440224,
       "quality": 90,
       "decode_fraction": 1.0,
-      "tier_hint": "24GB VRAM / 32GB+ unified"
+      "tier_hint": "24GB VRAM / 32GB+ unified",
+      "launch": {
+        "args": "-ngl 999 -c 32768 --flash-attn on",
+        "samplers": "--temp 1.0 --top-p 0.95 --top-k 20 --min-p 0.0",
+        "tested": false
+      }
     },
     {
       "id": "qwen3.6-35b-a3b",
@@ -33,7 +43,12 @@
       "size_bytes": 22665829456,
       "quality": 80,
       "decode_fraction": 0.15,
-      "tier_hint": "8GB+ VRAM with 32GB RAM (spill-friendly), or 24GB+ resident"
+      "tier_hint": "8GB+ VRAM with 32GB RAM (spill-friendly), or 24GB+ resident",
+      "launch": {
+        "args": "-c 65536 -b 4096 -ub 4096 --flash-attn auto",
+        "samplers": "--temp 1.0 --top-p 0.95 --top-k 20 --min-p 0.0",
+        "tested": true
+      }
     },
     {
       "id": "gemma-4-e4b",
@@ -44,7 +59,12 @@
       "size_bytes": 4980000000,
       "quality": 60,
       "decode_fraction": 1.0,
-      "tier_hint": "CPU-only 16GB RAM, or any GPU >=6GB"
+      "tier_hint": "CPU-only 16GB RAM, or any GPU >=6GB",
+      "launch": {
+        "args": "-ngl 999 -c 32768 --flash-attn on",
+        "samplers": "--temp 1.0 --top-p 0.95 --top-k 64",
+        "tested": true
+      }
     },
     {
       "id": "gemma-4-e2b",
@@ -55,7 +75,12 @@
       "size_bytes": 2620000000,
       "quality": 40,
       "decode_fraction": 1.0,
-      "tier_hint": "CPU-only 8GB RAM / any GPU"
+      "tier_hint": "CPU-only 8GB RAM / any GPU",
+      "launch": {
+        "args": "-ngl 999 -c 32768 --flash-attn on",
+        "samplers": "--temp 1.0 --top-p 0.95 --top-k 64",
+        "tested": false
+      }
     },
     {
       "id": "deepseek-v4-flash",
@@ -66,7 +91,12 @@
       "size_bytes": 155100000000,
       "quality": 85,
       "decode_fraction": 0.1,
-      "tier_hint": "128GB+ unified / multi-GPU rigs"
+      "tier_hint": "128GB+ unified / multi-GPU rigs",
+      "launch": {
+        "args": "-c 32768 --flash-attn on",
+        "samplers": "--temp 0.7 --top-p 0.95",
+        "tested": false
+      }
     }
   ]
 }

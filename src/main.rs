@@ -81,6 +81,15 @@ fn main() {
             if let Some(repo) = &a.repo {
                 println!("  get: {} — {} quant", repo, a.quant);
             }
+            if let Some(launch) = &a.launch {
+                println!(
+                    "  run: llama-server -m <path-to-model.gguf> {} {}",
+                    launch.args, launch.samplers
+                );
+                if !launch.tested {
+                    println!("       (flags authored from model defaults, not yet field-tested)");
+                }
+            }
         }
         None => println!("recommended: nothing in the catalogue fits this machine"),
     }

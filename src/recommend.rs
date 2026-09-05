@@ -17,7 +17,7 @@
 //! a first-class candidate, not a last resort — partial offload of MoE
 //! models is normal daily-driver territory on 8-16GB cards.
 
-use crate::catalog::{Catalog, ModelEntry};
+use crate::catalog::{Catalog, Launch, ModelEntry};
 use hwprobe::{GpuState, HardwareInfo};
 use serde::Serialize;
 
@@ -164,6 +164,8 @@ pub struct Assessment {
     pub repo: Option<String>,
     pub quant: String,
     pub tier_hint: Option<String>,
+    /// Curated launch flags from the catalogue for this entry, if authored.
+    pub launch: Option<Launch>,
     #[serde(flatten)]
     pub verdict: Verdict,
 }
@@ -226,6 +228,7 @@ pub fn recommend(info: &HardwareInfo, catalog: &Catalog) -> Recommendation {
             repo: m.repo.clone(),
             quant: m.quant.clone(),
             tier_hint: m.tier_hint.clone(),
+            launch: m.launch.clone(),
             verdict: assess(m, &budget),
         })
         .collect();
@@ -366,5 +369,16 @@ mod tests {
         let rec = recommend(&info, &cat);
         assert!(rec.budget.bandwidth_measured);
         assert!((rec.budget.resident_bandwidth_gb_s - 326.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn picked_catalogue_entry_carries_launch_flags() {
+        let cat = catalog::load(None).unwrap();
+        let rec = recommend(&machine(31775, Some(8192), false), &cat);
+        let a = &rec.assessments[rec.pick.unwrap()];
+        assert!(
+            a.launch.is_some(),
+            "picked entry should have authored launch flags"
+        );
     }
 }

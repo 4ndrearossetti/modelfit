@@ -25,6 +25,7 @@ machine: discrete GPU | usable for models: 6.0 GiB (+24.8 GiB host for MoE spill
 
 recommended: Qwen3.6 35B-A3B (best-quality-spilled)
   get: unsloth/Qwen3.6-35B-A3B-GGUF — UD-Q4_K_M quant
+  run: llama-server -m <path-to-model.gguf> -c 65536 -b 4096 -ub 4096 --flash-attn auto --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0.0
 ```
 
 `--json` for machine-readable output, `--catalog PATH` to use your own
@@ -63,6 +64,19 @@ conservative on well-tuned setups. Tested memory margins:
 max(2 GiB, 9%) of VRAM reserved for the desktop, 20% of unified memory
 left to the OS.
 
+## The launch flags
+
+Each catalogue entry carries curated `llama-server` flags (context,
+batching, attention, and the model's recommended samplers) authored per
+model and, where marked tested, validated on real hardware. The command
+is printed for the pick (substitute the model path after downloading),
+and every assessment in the `--json` output carries its `launch` object
+for embedders.
+
+Deliberately absent: computed layer placement. llama.cpp's auto-fit
+places layers better than precomputed `-ngl`/`-ncmoe` values, so the
+templates let it.
+
 ## The catalogue
 
 `models.json` — deliberately small and curated, one quant per model (the
@@ -71,6 +85,8 @@ CPU-only 8GB laptops to 192GB+ rigs. Editing it is the intended workflow:
 sizes come from the HF repo file listings (sum all shards), quality is
 your ordering. The embedded copy makes the binary work offline;
 `--catalog` overrides it.
+Entries also carry a `launch` template (flags + samplers); `tested: false`
+marks flags authored from model defaults rather than validated on hardware.
 
 ## Relationship to hwprobe
 

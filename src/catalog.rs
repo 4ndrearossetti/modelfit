@@ -1,8 +1,8 @@
 //! Catalogue schema + loading. The catalogue is data, the logic is code:
-//! editorial judgement (which models, what quality ordering) lives in
-//! models.json; physics lives in recommend.rs.
+//! editorial judgement (which models, what quality ordering, which launch
+//! flags) lives in models.json; physics lives in recommend.rs.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Catalog {
@@ -26,6 +26,23 @@ pub struct ModelEntry {
     pub decode_fraction: f64,
     #[serde(default)]
     pub tier_hint: Option<String>,
+    /// Curated llama-server flags for THIS catalogue entry. Deliberately
+    /// contains no computed layer placement: llama.cpp's auto-fit places
+    /// layers better than precomputed -ngl/-ncmoe (validated empirically;
+    /// Ollama reached the same conclusion).
+    #[serde(default)]
+    pub launch: Option<Launch>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Launch {
+    /// Context, batch, attention, feature flags.
+    pub args: String,
+    /// Model-recommended sampling parameters.
+    pub samplers: String,
+    /// false = authored from defaults, not yet validated on hardware.
+    #[serde(default)]
+    pub tested: bool,
 }
 
 /// Embedded snapshot — works offline. --catalog PATH overrides.
